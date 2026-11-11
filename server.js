@@ -6,6 +6,7 @@ const db = require('./database');
 const { init } = db;
 const { authRouter, keyRouter, requireAuth, requireApiKey, requireCron, csrfGuard, rateLimit, userKey } = require('./auth');
 const { handleMcp } = require('./mcp-server');
+const { oauthRouter } = require('./oauth');
 const appstore = require('./collectors/appstore');
 const reddit = require('./collectors/reddit');
 const { runDue } = require('./collectors');
@@ -45,6 +46,7 @@ app.get('/health', async (req, res, next) => {
 // ---------------------------------------------------------------------------
 // MCP (Bearer API key — not cookies, so no CSRF surface). Stateless Streamable HTTP, POST only.
 // ---------------------------------------------------------------------------
+app.use(oauthRouter); // /.well-known/*, /oauth/* — connector sign-in (public endpoints + browser consent)
 const ensureDb = async (req, res, next) => { try { await init(); next(); } catch (err) { next(err); } };
 app.post('/mcp', ensureDb, requireApiKey, rateLimit('mcp', userKey, 300, 60000), handleMcp);
 app.all('/mcp', (req, res) => {

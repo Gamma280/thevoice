@@ -205,14 +205,19 @@
     renderHeader(kind, false);
     const form = $('#auth-form'), box = $('#form-error'), btn = $('#submit');
     // Attach the handler first so a fast submit is never ignored; the logged-in check runs alongside.
-    getMe().then((me) => { if (me) go(me.hasProfile ? '/dashboard.html' : '/index.html'); }).catch(() => {});
+    // After sign-in, return to a pending connector approval (/oauth/authorize?…) instead of the dashboard.
+    const nextParam = new URLSearchParams(location.search).get('next') || '';
+    const next = /^\/oauth\/authorize\?/.test(nextParam) ? nextParam : null;
+    if (next) document.querySelectorAll('a[href="/signup.html"], a[href="/login.html"]').forEach((a) => { a.href += `?next=${encodeURIComponent(next)}`; });
+    const after = (me) => next || (me.hasProfile ? '/dashboard.html' : '/index.html');
+    getMe().then((me) => { if (me) go(after(me)); }).catch(() => {});
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       clear(box);
       btn.disabled = true;
       try {
         const out = await api('POST', `/api/auth/${kind}`, { email: $('#email').value, password: $('#password').value }, { allow401: true });
-        go(out.hasProfile ? '/dashboard.html' : '/index.html');
+        go(after(out));
       } catch (err) {
         showError(box, err);
         btn.disabled = false;
@@ -757,6 +762,8 @@
     const origin = location.origin;
     const mcpUrl = `${origin}/mcp`;
     $('#mcp-url').textContent = mcpUrl;
+    $('#mcp-url-easy').textContent = mcpUrl;
+    $('#copy-url-easy').addEventListener('click', async () => toast((await copyText(mcpUrl)) ? 'URL copied.' : 'Copy failed — select it manually.'));
     const meta = $('#key-meta'), keyHost = $('#key-box'), cfgHost = $('#config'), status = $('#status');
     $('#copy-url').addEventListener('click', async () => toast((await copyText(mcpUrl)) ? 'URL copied.' : 'Copy failed — select it manually.'));
     $('#copy-prompt').addEventListener('click', async () => toast((await copyText($('#test-prompt').textContent)) ? 'Prompt copied.' : 'Copy failed.'));

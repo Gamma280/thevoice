@@ -170,6 +170,35 @@ const MIGRATIONS = [
         UNIQUE (user_id, keyword)
       )`
     ]
+  },
+  {
+    version: 6, // OAuth 2.1 for Claude's "Add custom connector" (dynamic client registration + PKCE)
+    statements: [
+      `CREATE TABLE oauth_clients (
+        client_id TEXT PRIMARY KEY,
+        client_name TEXT NOT NULL DEFAULT '',
+        redirect_uris TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE oauth_codes (
+        code_hash TEXT PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        redirect_uri TEXT NOT NULL,
+        code_challenge TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      )`,
+      `CREATE TABLE oauth_tokens (
+        id INTEGER PRIMARY KEY,
+        access_hash TEXT NOT NULL UNIQUE,
+        refresh_hash TEXT NOT NULL UNIQUE,
+        client_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        access_expires_at INTEGER NOT NULL,
+        refresh_expires_at INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`
+    ]
   }
 ];
 
@@ -267,6 +296,36 @@ const touchApiKey = (id) =>
   run("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ? AND (last_used_at IS NULL OR last_used_at < datetime('now', '-1 minute'))", [id]);
 const getActiveApiKey = (userId) =>
   one('SELECT key_prefix, created_at, last_used_at FROM api_keys WHERE user_id = ? AND revoked_at IS NULL', [userId]);
+
+// ---- OAuth (clients are public + dynamically registered; codes and tokens are stored hashed) ----
+const insertOAuthClient = (id, name, redirectUris) =>
+  run('INSERT INTO oauth_clients (client_id, client_name, redirect_uris) VALUES (?, ?, ?)', [id, name, JSON.stringify(redirectUris)]);
+async function getOAuthClient(id) {
+  const r = await one('SELECT client_id, client_name, redirect_uris FROM oauth_clients WHERE client_id = ?', [id]);
+  return r ? { clientId: r.client_id, name: r.client_name, redirectUris: JSON.parse(r.redirect_uris) } : null;
+}
+const insertOAuthCode = (hash, clientId, userId, redirectUri, challenge, expiresAt) =>
+  run('INSERT INTO oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [hash, clientId, userId, redirectUri, challenge, expiresAt]);
+// Single use: the DELETE is the atomic "consume", so a replayed code finds nothing.
+async function consumeOAuthCode(hash) {
+  const r = await one('DELETE FROM oauth_codes WHERE code_hash = ? RETURNING client_id, user_id, redirect_uri, code_challenge, expires_at', [hash]);
+  if (Math.random() < 0.05) await run('DELETE FROM oauth_codes WHERE expires_at < ?', [Date.now()]);
+  return r ? { clientId: r.client_id, userId: Number(r.user_id), redirectUri: r.redirect_uri, challenge: r.code_challenge, expiresAt: Number(r.expires_at) } : null;
+}
+const insertOAuthToken = (accessHash, refreshHash, clientId, userId, accessExp, refreshExp) =>
+  run('INSERT INTO oauth_tokens (access_hash, refresh_hash, client_id, user_id, access_expires_at, refresh_expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [accessHash, refreshHash, clientId, userId, accessExp, refreshExp]);
+async function findOAuthAccessToken(hash) {
+  const r = await one('SELECT user_id FROM oauth_tokens WHERE access_hash = ? AND access_expires_at > ?', [hash, Date.now()]);
+  return r ? { userId: Number(r.user_id) } : null;
+}
+// Refresh tokens rotate: consuming one deletes the whole row (old access token dies with it).
+async function consumeOAuthRefresh(hash) {
+  const r = await one('DELETE FROM oauth_tokens WHERE refresh_hash = ? RETURNING client_id, user_id, refresh_expires_at', [hash]);
+  if (Math.random() < 0.05) await run('DELETE FROM oauth_tokens WHERE refresh_expires_at < ?', [Date.now()]);
+  return r ? { clientId: r.client_id, userId: Number(r.user_id), refreshExpiresAt: Number(r.refresh_expires_at) } : null;
+}
 
 // ---- founders ----
 // location_mode: 'strict' = with ≥1 location, only quotes from location-tied sources; 'all' = everything followed.
@@ -733,7 +792,7 @@ async function setFeedback(userId, id, feedback, reason) {
 module.exports = {
   client, init,
   createUser, getUserByEmail, insertSession, deleteSession, getSessionUser,
-  hitRateLimit, rotateApiKey, getActiveApiKey, findActiveApiKey, touchApiKey,
+  hitRateLimit, insertOAuthClient, getOAuthClient, insertOAuthCode, consumeOAuthCode, insertOAuthToken, findOAuthAccessToken, consumeOAuthRefresh, rotateApiKey, getActiveApiKey, findActiveApiKey, touchApiKey,
   upsertFounder, getFounder, setLocationMode, listLocations, replaceLocations, listKeywords, replaceKeywords, countKeywordMatches,
   upsertSource, replaceFounderSources, followSource, unfollowSource, countCommunities, isFollowing, listUserSources,
   subredditCounts, getUserQuotes, sampleUserQuotes, countUserQuotes, getQuotesByIdsForUser,

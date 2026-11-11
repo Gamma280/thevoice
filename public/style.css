@@ -204,3 +204,7 @@ pre.code {
 
 /* a problem keyword the founder is tracking ("revenge trading") */
 .chip.kw { color: #fcd34d; border-color: #854d0e; background: #26200c; }
+
+/* ---- connect page: collapsible advanced section ---- */
+details > summary { cursor: pointer; padding: .5rem 0; }
+details[open] > summary { margin-bottom: .75rem; }

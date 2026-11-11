@@ -84,9 +84,9 @@ const row = (n, over = {}) => ({
 const srcByLabel = (json, re) => json.sources.find((s) => re.test(s.label));
 
 // =====================================================================
-test('migrations 1-5 ran exactly once; location tables/columns exist', async () => {
+test('migrations 1-6 ran exactly once; location tables/columns exist', async () => {
   const versions = (await db.client.execute('SELECT version FROM schema_migrations ORDER BY version')).rows.map((r) => Number(r.version));
-  assert.deepEqual(versions, [1, 2, 3, 4, 5]);
+  assert.deepEqual(versions, [1, 2, 3, 4, 5, 6]);
   const cols = (await db.client.execute('PRAGMA table_info(founder_sources)')).rows.map((r) => r.name);
   assert.ok(cols.includes('location_id'));
   const fcols = (await db.client.execute('PRAGMA table_info(founders)')).rows.map((r) => r.name);

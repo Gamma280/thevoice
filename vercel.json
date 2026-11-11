@@ -13,6 +13,14 @@
   ],
   "rewrites": [
     {
+      "source": "/.well-known/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/oauth/(.*)",
+      "destination": "/api/index"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/index"
     },

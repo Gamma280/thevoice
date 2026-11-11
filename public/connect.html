@@ -13,8 +13,24 @@
   <header id="site-header"></header>
   <main id="main" class="container">
     <h1>Connect TheVoice to Claude</h1>
-    <p class="muted">Three steps. Claude uses your own key to read your profile and quotes and to save content for you.</p>
+    <p class="muted">Claude reads your profile and audience quotes and saves drafts back to your dashboard.</p>
     <div id="status" aria-live="polite"></div>
+    <section class="card stack" id="easy-connect">
+      <h2>Easiest way — no key, no files</h2>
+      <ol class="steps">
+        <li>
+          <p>Copy your server address:</p>
+          <p><code id="mcp-url-easy" class="mono"></code>
+            <button type="button" id="copy-url-easy" class="btn secondary small">Copy</button></p>
+        </li>
+        <li>In Claude open <strong>Settings → Connectors → Add custom connector</strong> (on claude.ai: <strong>Customize → Connectors</strong>). Name it <strong>TheVoice</strong>, paste the address, and click <strong>Add</strong>.</li>
+        <li>Claude opens a TheVoice page. Log in if asked and click <strong>Allow</strong>. You’re connected.</li>
+        <li>Start a chat, click <strong>+ → Connectors</strong>, switch <strong>TheVoice</strong> on, and ask: <em>“Generate 5 hooks for my app using TheVoice”</em>.</li>
+      </ol>
+    </section>
+    <details class="field" id="advanced">
+      <summary><strong>Advanced: connect with a key instead</strong> (Claude Desktop config file)</summary>
+    <p class="muted">Three steps. Claude uses your own key to read your profile and quotes and to save content for you.</p>
     <ol class="steps">
       <li>
         <h2>Create your MCP key</h2>
@@ -26,7 +42,7 @@
         <h2>Add TheVoice to Claude</h2>
         <p>Your server address: <code id="mcp-url" class="mono"></code>
           <button type="button" id="copy-url" class="btn secondary small">Copy</button></p>
-        <p class="muted">Claude’s “Add custom connector” screen only supports OAuth sign-in, so connect with a small bridge instead. Open Claude Desktop → <strong>Settings → Developer → Edit Config</strong>, paste this into <span class="mono">claude_desktop_config.json</span>, then restart Claude Desktop. It needs <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">Node.js</a> installed.</p>
+        <p class="muted">Use this if the connector above doesn’t work for you. Open Claude Desktop → <strong>Settings → Developer → Edit Config</strong>, paste this into <span class="mono">claude_desktop_config.json</span>, then restart Claude Desktop. It needs <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">Node.js</a> installed.</p>
         <div id="config"></div>
         <p class="hint">The key goes in the <span class="mono">env</span> section, not the command line, so it also works on Windows. Treat it like a password.</p>
       </li>
@@ -38,6 +54,7 @@
         <p class="muted field">When Claude finishes, open your <a href="/dashboard.html">dashboard</a> — the new hooks will be waiting for your review.</p>
       </li>
     </ol>
+    </details>
   </main>
 </body>
 </html>

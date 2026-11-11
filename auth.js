@@ -12,6 +12,7 @@ const MAX_ATTEMPTS = 10;
 const DUMMY_HASH = bcrypt.hashSync('timing-parity', 10);
 
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const baseUrl = (req) => `${req.protocol}://${req.get('host')}`;
 const isProd = () => process.env.NODE_ENV === 'production';
 
 // ---- cookies ----
@@ -103,12 +104,19 @@ const userKey = (req) => (req.userId ? String(req.userId) : null);
 // MCP auth: `Authorization: Bearer tv_…` → user. Unknown/revoked/malformed keys all look identical (401).
 async function requireApiKey(req, res, next) {
   const fail = () => {
-    res.set('WWW-Authenticate', 'Bearer realm="thevoice"');
+    // resource_metadata tells OAuth-capable clients (Claude's custom connector) where to start sign-in.
+    res.set('WWW-Authenticate', `Bearer realm="thevoice", resource_metadata="${baseUrl(req)}/.well-known/oauth-protected-resource"`);
     return next(new HttpError(401, 'Unauthorized'));
   };
   try {
-    const m = /^Bearer (tv_[A-Za-z0-9_-]{20,100})$/.exec(req.headers.authorization || '');
+    const m = /^Bearer (tvo?_[A-Za-z0-9_-]{20,100})$/.exec(req.headers.authorization || '');
     if (!m) return fail();
+    if (m[1].startsWith('tvo_')) { // OAuth access token (Claude's custom connector)
+      const tok = await db.findOAuthAccessToken(sha256(m[1]));
+      if (!tok) return fail();
+      req.userId = tok.userId;
+      return next();
+    }
     const key = await db.findActiveApiKey(sha256(m[1]));
     if (!key) return fail();
     await db.touchApiKey(key.id);
@@ -207,4 +215,4 @@ keyRouter.post('/', requireAuth, async (req, res, next) => {
   }
 });
 
-module.exports = { authRouter, keyRouter, requireAuth, requireApiKey, requireCron, csrfGuard, rateLimit, userKey, sha256 };
+module.exports = { baseUrl, loadUser, readCookie, COOKIE, authRouter, keyRouter, requireAuth, requireApiKey, requireCron, csrfGuard, rateLimit, userKey, sha256 };
