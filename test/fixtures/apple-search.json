@@ -1,0 +1,17 @@
+{
+ "resultCount": 2,
+ "results": [
+  {
+   "trackId": 938003185,
+   "trackName": "Fake Trading App",
+   "artistName": "Fake Inc",
+   "trackViewUrl": "https://apps.apple.com/us/app/fake/id938003185?uo=4"
+  },
+  {
+   "trackId": 123456789,
+   "trackName": "Other App",
+   "artistName": "Other",
+   "trackViewUrl": "https://apps.apple.com/us/app/other/id123456789"
+  }
+ ]
+}

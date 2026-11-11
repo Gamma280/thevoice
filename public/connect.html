@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Connect TheVoice to Claude">
+  <title>Connect to Claude — TheVoice</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-page="connect">
+  <header id="site-header"></header>
+  <main id="main" class="container">
+    <h1>Connect TheVoice to Claude</h1>
+    <p class="muted">Three steps. Claude uses your own key to read your profile and quotes and to save content for you.</p>
+    <div id="status" aria-live="polite"></div>
+    <ol class="steps">
+      <li>
+        <h2>Create your MCP key</h2>
+        <div id="key-meta"></div>
+        <div class="actions"><button type="button" id="make-key" class="btn">Create my MCP key</button></div>
+        <div id="key-box" class="field" aria-live="polite"></div>
+      </li>
+      <li>
+        <h2>Add TheVoice to Claude</h2>
+        <p>Your server address: <code id="mcp-url" class="mono"></code>
+          <button type="button" id="copy-url" class="btn secondary small">Copy</button></p>
+        <p class="muted">Claude’s “Add custom connector” screen only supports OAuth sign-in, so connect with a small bridge instead. Open Claude Desktop → <strong>Settings → Developer → Edit Config</strong>, paste this into <span class="mono">claude_desktop_config.json</span>, then restart Claude Desktop. It needs <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer">Node.js</a> installed.</p>
+        <div id="config"></div>
+        <p class="hint">The key goes in the <span class="mono">env</span> section, not the command line, so it also works on Windows. Treat it like a password.</p>
+      </li>
+      <li>
+        <h2>Test it</h2>
+        <p>In a new Claude chat, type:</p>
+        <pre class="code" id="test-prompt">Generate 5 hooks for my app using TheVoice</pre>
+        <div class="actions"><button type="button" id="copy-prompt" class="btn secondary small">Copy prompt</button></div>
+        <p class="muted field">When Claude finishes, open your <a href="/dashboard.html">dashboard</a> — the new hooks will be waiting for your review.</p>
+      </li>
+    </ol>
+  </main>
+</body>
+</html>

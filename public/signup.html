@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Create your TheVoice account">
+  <title>Sign up — TheVoice</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-page="signup">
+  <header id="site-header"></header>
+  <main id="main" class="container narrow">
+    <h1>Create your account</h1>
+    <p class="muted">TheVoice remembers what your audience is saying, so Claude can write in their voice.</p>
+    <form id="auth-form" class="card stack" novalidate>
+      <div id="form-error" aria-live="polite"></div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
+        <p class="hint">At least 8 characters.</p>
+      </div>
+      <button type="submit" id="submit" class="btn">Create account</button>
+    </form>
+    <p class="muted">Already have an account? <a href="/login.html">Log in</a></p>
+  </main>
+</body>
+</html>

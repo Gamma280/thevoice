@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Your generated content">
+  <title>Dashboard — TheVoice</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-page="dashboard">
+  <header id="site-header"></header>
+  <main id="main" class="container">
+    <div class="row between">
+      <h1>Your content</h1>
+      <div class="row">
+        <button type="button" id="refresh" class="btn secondary">Refresh</button>
+        <button type="button" id="generate" class="btn">Generate New Content</button>
+      </div>
+    </div>
+    <p class="muted">Claude writes the hooks. Edit, approve or delete them here — your notes teach Claude your taste.</p>
+    <div id="status" aria-live="polite"></div>
+    <div id="empty" hidden></div>
+    <div id="content-list" class="stack"></div>
+  </main>
+</body>
+</html>

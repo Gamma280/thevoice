@@ -1,0 +1,177 @@
+{
+ "feed": {
+  "entry": [
+   {
+    "id": {
+     "label": "app-metadata"
+    },
+    "title": {
+     "label": "Fake App"
+    },
+    "im:name": {
+     "label": "Fake App"
+    }
+   },
+   {
+    "id": {
+     "label": "1001"
+    },
+    "updated": {
+     "label": "2026-11-08T10:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "1"
+    },
+    "title": {
+     "label": "Keeps crashing"
+    },
+    "content": {
+     "label": "I keep getting logged out every time I update. Email me at john@example.com or call +1 (415) 555-0199, this is the worst app and I can't trade.",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1002"
+    },
+    "updated": {
+     "label": "2026-11-08T09:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "5"
+    },
+    "title": {
+     "label": "Love it"
+    },
+    "content": {
+     "label": "Great app thanks",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1003"
+    },
+    "updated": {
+     "label": "2026-11-07T10:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "2"
+    },
+    "title": {
+     "label": "Slow"
+    },
+    "content": {
+     "label": "The app freezes when I try to sell and I always lose money because of it.",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1004"
+    },
+    "updated": {
+     "label": "2026-11-07T09:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "1"
+    },
+    "title": {
+     "label": "Great deal"
+    },
+    "content": {
+     "label": "Use my code ABC123 and earn $500 a day, DM me now",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1005"
+    },
+    "updated": {
+     "label": "2026-11-06T10:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "1"
+    },
+    "title": {
+     "label": "Mala"
+    },
+    "content": {
+     "label": "Esta aplicaci\u00f3n es muy mala y no funciona nada bien para m\u00ed",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1006"
+    },
+    "updated": {
+     "label": "2026-11-06T09:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "4"
+    },
+    "title": {
+     "label": "Mostly good but"
+    },
+    "content": {
+     "label": "I love it but I can't withdraw my money and it keeps failing, so frustrating.",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1007"
+    },
+    "updated": {
+     "label": "2026-11-05T10:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "2"
+    },
+    "title": {
+     "label": "Slow"
+    },
+    "content": {
+     "label": "The app freezes when I try to sell and I always lose money because of it!",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   },
+   {
+    "id": {
+     "label": "1008"
+    },
+    "updated": {
+     "label": "2026-11-05T09:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "1"
+    },
+    "title": {
+     "label": "x"
+    },
+    "content": {
+     "label": "bad",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   }
+  ]
+ }
+}

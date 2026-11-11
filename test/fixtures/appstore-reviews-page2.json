@@ -1,0 +1,26 @@
+{
+ "feed": {
+  "entry": [
+   {
+    "id": {
+     "label": "2001"
+    },
+    "updated": {
+     "label": "2026-09-01T10:00:00-07:00"
+    },
+    "im:rating": {
+     "label": "3"
+    },
+    "title": {
+     "label": "Layout"
+    },
+    "content": {
+     "label": "I hate the new layout, it is confusing and I can't find anything anymore.",
+     "attributes": {
+      "type": "text"
+     }
+    }
+   }
+  ]
+ }
+}

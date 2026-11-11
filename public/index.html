@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Tell TheVoice about your app and audience">
+  <title>Set up — TheVoice</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-page="index">
+  <header id="site-header"></header>
+  <main id="main" class="container">
+    <h1>Set up TheVoice</h1>
+    <p class="muted">Five minutes now, and Claude will write in your audience’s own words.</p>
+    <form id="setup-form" class="stack" novalidate>
+      <div id="form-error" aria-live="polite"></div>
+
+      <div class="card stack">
+        <div class="field">
+          <label for="app_description">Describe your app in one sentence</label>
+          <textarea id="app_description" name="app_description" maxlength="500" required></textarea>
+        </div>
+        <div class="field">
+          <label for="target_user">Who is your user? Describe them in one line</label>
+          <input type="text" id="target_user" name="target_user" maxlength="500" required>
+        </div>
+        <div class="field">
+          <label for="voice_tone">How do you talk to your users?</label>
+          <select id="voice_tone" name="voice_tone">
+            <option>Casual</option>
+            <option selected>Direct</option>
+            <option>Motivational</option>
+            <option>Technical</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="niche">Niche <span class="muted">(optional)</span></label>
+          <input type="text" id="niche" name="niche" maxlength="100" placeholder="e.g. trading psychology">
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Where is your audience?</legend>
+        <p class="hint">Pick up to 3 places. Quotes come only from these locations. App Store reviews are country-level; a city or region helps find local Reddit communities and ranks quotes that mention it. Only English text is kept.</p>
+        <div id="locations"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your competitors <span class="muted">(optional)</span></legend>
+        <p class="hint">Add up to 5 apps your audience uses and we’ll read their recent App Store reviews in each country you picked above. You can skip this and track problems or communities instead.</p>
+        <div id="chosen-competitors" aria-live="polite"></div>
+        <label for="competitor" class="field">Search for an app (name or App Store link)</label>
+        <div class="row">
+          <div class="grow"><input type="text" id="competitor" name="competitor" maxlength="500" placeholder="e.g. Robinhood"></div>
+          <button type="button" id="find-app" class="btn secondary">Find app</button>
+        </div>
+        <div id="competitor-result" aria-live="polite"></div>
+        <div id="mentions-wrap" class="field">
+          <label class="check" for="mentions"><input type="checkbox" id="mentions" checked><span>Also collect complaints about these apps from Reddit
+            <span class="hint"> Searches all of Reddit for posts that name the app. Reddit can’t be limited to a place, so these show as “all regions”.</span></span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Problems you want to find <span class="muted">(optional)</span></legend>
+        <p class="hint">What problem do you want to find in your users? Write it in your own words, for example “revenge trading” or “not following my system”. We search Reddit for people describing it, skip promotions, and highlight matching quotes everywhere. Up to 8.</p>
+        <div id="chosen-problems" aria-live="polite"></div>
+        <label for="problem-input" class="field">Add a problem</label>
+        <div class="row">
+          <div class="grow"><input type="text" id="problem-input" maxlength="60" placeholder="e.g. revenge trading"></div>
+          <button type="button" id="add-problem" class="btn secondary">Add</button>
+        </div>
+        <div id="problem-error" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Communities <span class="muted">(optional)</span></legend>
+        <p class="hint">Reddit communities where your audience talks. Up to 8.</p>
+        <div id="communities"></div>
+      </fieldset>
+
+      <button type="submit" id="submit" class="btn">Set Up TheVoice</button>
+    </form>
+  </main>
+</body>
+</html>
