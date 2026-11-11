@@ -140,8 +140,11 @@ ${hidden}<input type="hidden" name="csrf" value="${esc(consentToken(req))}">
 
 router.post('/oauth/authorize', express.urlencoded({ extended: false, limit: '20kb' }), async (req, res, next) => {
   try {
+    // Browsers send `Origin: null` on same-site form posts when Referrer-Policy is no-referrer (helmet's default),
+    // so "null" can't be judged here; the csrf token below and the SameSite=Lax cookie are the real defence.
+    if (req.headers['sec-fetch-site'] === 'cross-site') throw new HttpError(403, 'Cross-origin request blocked');
     const origin = req.headers.origin;
-    if (origin) {
+    if (origin && origin !== 'null') {
       let h; try { h = new URL(origin).host; } catch { h = null; }
       if (h !== (req.get('x-forwarded-host') || req.get('host'))) throw new HttpError(403, 'Cross-origin request blocked');
     }

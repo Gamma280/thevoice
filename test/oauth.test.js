@@ -58,7 +58,7 @@ async function consent(cookie, url, decision = 'allow') {
   const csrf = /name="csrf" value="([^"]+)"/.exec(html)[1];
   const u = new URL(url);
   const body = { ...Object.fromEntries(u.searchParams), csrf, decision };
-  const r = await fetch(`${base}/oauth/authorize`, { method: 'POST', headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' }, body: form(body) });
+  const r = await fetch(`${base}/oauth/authorize`, { method: 'POST', headers: { cookie, origin: 'null', 'content-type': 'application/x-www-form-urlencoded' }, body: form(body) });
   const out = await r.text();
   const href = /<a href="([^"]+)">continue/.exec(out);
   return { status: r.status, url: href ? new URL(href[1].replace(/&amp;/g, '&')) : null };
@@ -169,6 +169,11 @@ test('deny returns access_denied; consent POST needs the csrf token, a session a
   assert.equal((await post({ cookie })).status, 403);
   assert.equal((await post({})).status, 401);
   assert.equal((await post({ cookie, origin: 'https://evil.example' })).status, 403);
+  assert.equal((await post({ cookie, 'sec-fetch-site': 'cross-site' })).status, 403);
+  // a null Origin (same-site form post under no-referrer) is not rejected for being cross-origin: it reaches the csrf check
+  const withNull = await post({ cookie, origin: 'null' });
+  assert.equal(withNull.status, 403);
+  assert.match((await withNull.json()).error, /Invalid or expired form/);
 });
 
 test('consent page escapes the client name; a tv_ API key still works', async () => {
