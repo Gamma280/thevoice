@@ -1,7 +1,7 @@
 # TheVoice — Architecture (v3)
 
 Companion to [agent.md](agent.md) (the spec) and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (the build checklist).
-**v3:** hardcoded quotes replaced by a live collection subsystem (sections 2, 3, 4, 5.5, 6, 7, 8, 9 changed). **Phase 3 is built.** **Phase 4 (MCP server) is built.** **v3.1:** target locations (country + city/region) added (§4, §5.1, §5.6, §6, §8). **Reddit today = Arctic Shift (primary) → Reddit RSS (fallback); the official API is a dormant placeholder** that activates when credentials are set.
+**v3:** hardcoded quotes replaced by a live collection subsystem (sections 2, 3, 4, 5.5, 6, 7, 8, 9 changed). **Phase 3 is built.** **Phase 4 (MCP server) is built.** **v3.1:** target locations (country + city/region) added (§4, §5.1, §5.6, §6, §8). **v3.4:** OAuth 2.1 for Claude's custom connector (§5.4b); **deployed** on Vercel + Turso. **Reddit today = Arctic Shift (primary) → Reddit RSS (fallback); the official API is a dormant placeholder** that activates when credentials are set.
 
 ## 1. Summary
 TheVoice is memory + canvas for Claude. A founder signs up, describes their app, names a competitor app and (optionally) subreddits, and gets a personal MCP key. A **collector** continuously pulls real audience pain — App Store reviews of the competitor and Reddit posts from the named communities — cleans, scores and stores it. Claude (the AI, paid for by the founder's own Claude plan) connects to `/mcp`, reads the founder's profile, the freshest high-pain quotes and past feedback, writes hooks and a script, and saves them back. The founder reviews them in a dashboard; edits/deletes/approvals (with reasons) flow back to Claude — the flywheel. TheVoice contains **no AI calls and no AI keys**; the collector is deterministic code.
@@ -113,7 +113,21 @@ Dashboard action (edit / delete / approve) → reason modal → `PUT`/`DELETE` �
 /mcp              : Authorization: Bearer tv_… → sha256 → api_keys (revoked_at IS NULL) → userId
 /api/cron/collect : Authorization: Bearer CRON_SECRET (timing-safe compare; 503 if unset) — no user context
 ```
+`/mcp` also accepts `Authorization: Bearer tvo_…` (OAuth access token → `oauth_tokens` → userId); see §5.4b.
 Three separate credential types on purpose: a leaked MCP key reaches only the 5 tools; the cron secret can only trigger collection.
+
+### 5.4b OAuth connector sign-in 🔄 (v3.4)
+```
+Claude ──POST /mcp (no token)──▶ 401  WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource"
+Claude ──GET  /.well-known/oauth-protected-resource, /.well-known/oauth-authorization-server   (discovery)
+Claude ──POST /oauth/register {client_name, redirect_uris}  ──▶ client_id   (public client, no secret; https / loopback / app-scheme URIs only)
+Claude opens browser ─▶ GET /oauth/authorize?client_id&redirect_uri&code_challenge(S256)&state
+     not logged in → /login.html?next=…  (login/signup return to the approval step)
+     logged in     → consent page → POST /oauth/authorize (csrf token + cookie) → page with meta-refresh to redirect_uri?code=…&state=…
+Claude ──POST /oauth/token (code + code_verifier)──▶ access_token tvo_… (1 h) + refresh_token tvr_… (90 d, rotates)
+Claude ──POST /mcp  Authorization: Bearer tvo_…  ──▶ requireApiKey → oauth_tokens → userId
+```
+Codes, access and refresh tokens are stored as SHA-256 hashes; codes are single use (atomic `DELETE … RETURNING`); a refresh rotates the whole row. Consent returns a 200 page with a meta refresh, not a 302, because Chrome applies `form-action` to redirects after a form post. The consent POST ignores `Origin: null` (sent under `Referrer-Policy: no-referrer`) and relies on the csrf token, the SameSite cookie and `Sec-Fetch-Site`.
 
 ### 5.5b Competitors and Reddit complaints 🔄 (v3.2)
 1. Onboarding: the founder adds up to 5 competitor apps; `POST /api/setup` sends `competitor_sources[]` + `competitor_mentions`.
@@ -179,7 +193,7 @@ Properties: **idempotent** (unique keys), **resumable** (budget stop ⇒ remaini
 | Decision | Why | Revisit when |
 |---|---|---|
 | Email+password, no verification/reset | Fastest safe login for MVP | Email provider chosen → verification + reset / Google OAuth |
-| MCP API key in Bearer header | Works with remote MCP clients today | Claude connector supports OAuth discovery → implement OAuth |
+| MCP auth: OAuth 2.1 (connector) + static `tv_` key (bridge) | OAuth gives a no-key setup; the key keeps the `mcp-remote` path | Need a per-app disconnect list → add UI over `oauth_tokens` |
 | Stateless MCP | Fits serverless | Need server→client notifications |
 | Soft delete | Preserves the flywheel's best signal | Compliance delete requirement → hard purge |
 | 🔄 **Live collection replaces seed data** | Quotes must be real, attributable and fresh; fake seeds with generic URLs aren't production-honest | — |
@@ -198,7 +212,7 @@ Properties: **idempotent** (unique keys), **resumable** (budget stop ⇒ remaini
 1. **Reddit (terms + reliability):** today's providers are unofficial. Reddit's terms restrict commercial use of its data without an agreement; Arctic Shift is a volunteer-run archive (no SLA, may lag, `subreddits/search` can time out on broad prefixes); Reddit RSS returns 429 after a few quick requests and may block datacenter IPs (Vercel). Local probes: `.json` → 403, RSS → 429 under bursts, Arctic Shift → 200. **Re-verify from a Vercel deployment in Phase 6**, then decide before a commercial launch: apply for official access (Responsible Builder Policy — approval required), accept the risk, or run App-Store-only. **HTTP 403 (network blocked) is handled without evasion:** plain "blocked" status, 6 h retry, and an app-community fallback via Arctic Shift (`reddit_search` chain `official → rss → arctic`); official API access is the real fix.
 2. **Apple review feed** is unofficial and capped (~500 most recent per country, 50/page, 10 pages); confirm it still responds in the expected shape (zod-checked; failure is surfaced, not silent). Keep volume low.
 3. **Vercel limits:** Hobby cron = once/day; confirm current `maxDuration` ceiling and cron count for the plan; `CRON_SECRET` header behavior.
-4. **Claude's remote-MCP client config** changes often: confirm custom `Authorization` header support; keep the `mcp-remote` fallback.
+4. **Claude's remote-MCP client config** changes often. The OAuth connector is verified working; the `mcp-remote` fallback is kept.
 5. **`@modelcontextprotocol/sdk` API surface** (Streamable HTTP transport, `McpServer.registerTool` vs `tool`): check installed typings before coding.
 6. **Express on Vercel:** confirm `api/index.js` + rewrites (incl. `/api/cron/collect`) work with `express.json` and the MCP transport reading `req.body`.
 7. **Turso from serverless:** HTTP client (`@libsql/client/web` if bundling issues arise); verify batch/transaction behavior for migrations.

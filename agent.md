@@ -4,11 +4,12 @@
 > **v3.1 — locations (built):** founders pick up to 3 target locations (country + optional city/region). App Store reviews are collected only from those countries' storefronts; Reddit uses *local* communities tied to each location (suggested via subreddit search); quotes that name the founder's place are ranked first. Strict mode (default) returns only location-tied quotes. New: `founder_locations` table, `founder_sources.location_id`, `founders.location_mode`, `locations.js`, `/api/countries`, `/api/locations/suggest`, `/api/location-mode`. **Reddit today runs on Arctic Shift (primary) → Reddit RSS (fallback); the official Reddit API is a dormant placeholder** — set `REDDIT_CLIENT_ID/SECRET/USER_AGENT` after Reddit approves the app and it is used first automatically.
 > **v3.2 — multiple competitors + Reddit complaints + provenance (built):** up to **5 competitor apps** (each collected in every target country's storefront; one batched Apple lookup per country); optional **Reddit complaints about each competitor** via Reddit-wide search (`reddit_search` sources; Reddit's search feed today, the official API when approved — Arctic Shift can't do global text search); every quote now reports **which app it is about** (`app`), **the subreddit** and **when it was published**, in the API, MCP tools, dashboard and Sources page. Migration 4 adds `sources.subject`. Competitor-wide sources (incl. Reddit mentions) stay visible in strict location mode, labelled "all regions".
 > **v3.3 — problem keywords + promo filtering + zero competitors (built):** the founder can list **problems to find in their users** (≤ 8, e.g. "revenge trading", "not following my system"). TheVoice searches Reddit for each (`reddit_keyword` sources), **drops promotions**, and highlights/ranks every quote that matches a problem — from any source — with `matched_keywords`. **Competitors are now optional (0–5).** Migration 5 adds `founder_keywords`.
+> **v3.4 — OAuth connector (built):** Claude's "Add custom connector" now works: the server is its own OAuth 2.1 authorization server (dynamic client registration, PKCE S256, consent page behind the normal TheVoice login, single-use codes, 1 h access tokens `tvo_…`, rotating 90-day refresh tokens `tvr_…`), advertised via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`. A 401 from `/mcp` carries `WWW-Authenticate … resource_metadata=…`. The static `tv_` key and the `mcp-remote` bridge still work. Migration 6 adds `oauth_clients`, `oauth_codes`, `oauth_tokens`. **Live on Vercel (Turso).**
 > v2 (still in force): login + multi-user isolation, per-user MCP API keys, Vercel + Turso, stateless MCP at `/mcp`.
 > Companion docs: [ARCHITECTURE.md](ARCHITECTURE.md) (how it fits together) · [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (task-by-task build checklist).
 
 ## READ THIS FIRST
-You are building a web app called **TheVoice**. Read this file, `ARCHITECTURE.md` and `IMPLEMENTATION_PLAN.md` fully before writing code. Work phase by phase; **verify each phase's acceptance checks before starting the next**. Phases 1–5 are built (3 = live collection with no hardcoded quotes; 4 = the MCP server; 5 = the frontend). Phase 6 (Vercel deploy) remains. Do not start a phase until the user says "approved" or "go ahead".
+You are building a web app called **TheVoice**. Read this file, `ARCHITECTURE.md` and `IMPLEMENTATION_PLAN.md` fully before writing code. Work phase by phase; **verify each phase's acceptance checks before starting the next**. Phases 1–5 are built (3 = live collection with no hardcoded quotes; 4 = the MCP server; 5 = the frontend). Phase 6 (Vercel deploy) is done except the official Reddit API (pending approval); Phase 7 (OAuth connector) is done. Do not start a phase until the user says "approved" or "go ahead".
 
 ---
 
@@ -264,7 +265,7 @@ CREATE INDEX IF NOT EXISTS idx_content_user ON content(user_id, created_at DESC)
 - `GET /api/cron/collect` requires `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this automatically when the `CRON_SECRET` env var is set). Constant-time comparison; if `CRON_SECRET` is unset the route returns 503 (fails closed). Not usable with a user session or MCP key.
 
 ### Out of scope for MVP (documented, not forgotten)
-Email verification, password reset, OAuth/social login, 2FA, team accounts, billing, OAuth for MCP.
+Email verification, password reset, social login, 2FA, team accounts, billing, a "connected apps" list with per-app disconnect on the Connect page.
 
 ---
 
@@ -303,7 +304,12 @@ POST   /api/feedback/:id       → Save founder feedback {feedback, reason} on c
 GET    /api/mcp-key            → metadata about the active MCP key
 POST   /api/mcp-key            → rotate key, returns plaintext once
 
-POST   /mcp                    → MCP Streamable HTTP endpoint (Bearer API key, not cookie)
+POST   /mcp                    → MCP Streamable HTTP endpoint (Bearer `tv_` API key or `tvo_` OAuth access token, not cookie)
+
+GET    /.well-known/oauth-protected-resource · /.well-known/oauth-authorization-server   → OAuth discovery (public)
+POST   /oauth/register         → dynamic client registration (public clients, rate limited)
+GET    /oauth/authorize        → login redirect + consent page;  POST /oauth/authorize → Allow/Cancel (csrf token + session cookie)
+POST   /oauth/token            → authorization_code (PKCE) and refresh_token grants
 ```
 
 **`POST /api/setup` body** 🔄
@@ -484,7 +490,7 @@ All pages: dark theme, one column, mobile friendly. **Render all dynamic text wi
 - Preview list of the top collected quotes (text-only, with source links) so founders can sanity-check what Claude will see.
 
 ### Page 4: /connect.html — MCP Setup (requires login) (unchanged from v2)
-- Create/rotate MCP key (shown once; regenerating asks for confirmation because it revokes the old key), the real `<origin>/mcp` URL, and the **`mcp-remote` bridge config** (verified end to end): `{"mcpServers":{"thevoice":{"command":"npx","args":["-y","mcp-remote","<origin>/mcp","--header","Authorization:${AUTH_HEADER}"],"env":{"AUTH_HEADER":"Bearer <key>"}}}}` — the key lives in `env` (no spaces in args, so it also works on Windows). **Why not Claude's "Add custom connector" screen:** it only supports OAuth sign-in, not a static Bearer key; OAuth for MCP is the planned upgrade (see out-of-scope). Steps shown: create key → paste config into Settings → Developer → Edit Config → restart → test prompt.
+- Create/rotate MCP key (shown once; regenerating asks for confirmation because it revokes the old key), the real `<origin>/mcp` URL, and the **`mcp-remote` bridge config** (verified end to end): `{"mcpServers":{"thevoice":{"command":"npx","args":["-y","mcp-remote","<origin>/mcp","--header","Authorization:${AUTH_HEADER}"],"env":{"AUTH_HEADER":"Bearer <key>"}}}}` — the key lives in `env` (no spaces in args, so it also works on Windows). **Superseded by v3.4:** Claude's "Add custom connector" screen now works through TheVoice's OAuth server, so the page leads with the connector steps (copy URL → add connector → Allow) and keeps the key + `mcp-remote` bridge under "Advanced". Steps shown: create key → paste config into Settings → Developer → Edit Config → restart → test prompt.
 
 ---
 
@@ -555,15 +561,15 @@ Turso, `vercel.json` (crons, maxDuration), env vars incl. `CRON_SECRET`, Reddit 
 
 ## SUCCESS CRITERIA ✏️🔄
 The app is done when:
-- [ ] A founder can sign up, log in/out, and complete onboarding in under 2 minutes
-- [ ] Every API route and page is protected; one user can never see or change another user's data (verified by test)
-- [ ] 🔄 After onboarding with a real competitor app, real App Store reviews appear within ~1 minute, each with a working source link — and **no hardcoded/fabricated quotes exist in the runtime code**
-- [ ] 🔄 Collection runs on a schedule, is idempotent (no duplicates), isolates per-source failures, backs off on errors, prunes old data, and shows health (status/last run/errors) on the Sources page
-- [ ] 🔄 Reddit posts are collected via Arctic Shift (primary) and Reddit RSS (fallback) with no credentials; the official API stays a dormant placeholder; Reddit can be switched off with `REDDIT_PROVIDER=off`; the compliance decision is recorded in the README
-- [ ] 🔄 A founder can target up to 3 locations (country + optional city); App Store quotes come only from those storefronts, local communities are suggested, strict mode hides non-local quotes, and `mentions_location` ranks place-specific quotes first
-- [ ] MCP tools are callable from Claude using the user's own API key
-- [ ] Claude can call `save_generated_content` and it appears in that user's dashboard
-- [ ] Founder can edit, delete, and approve content in the dashboard
-- [ ] Feedback reason is captured on edit/delete/approve and returned by `get_content_history`
-- [ ] App is live on Vercel with a real HTTPS URL, a persistent (Turso) database, and a working cron
-- [ ] No AI keys anywhere in the codebase; no secrets committed (`.env` ignored)
+- [x] A founder can sign up, log in/out, and complete onboarding in under 2 minutes
+- [x] Every API route and page is protected; one user can never see or change another user's data (verified by test)
+- [x] 🔄 After onboarding with a real competitor app, real App Store reviews appear within ~1 minute, each with a working source link — and **no hardcoded/fabricated quotes exist in the runtime code**
+- [x] 🔄 Collection runs on a schedule, is idempotent (no duplicates), isolates per-source failures, backs off on errors, prunes old data, and shows health (status/last run/errors) on the Sources page
+- [~] 🔄 Reddit posts are collected via Arctic Shift (primary) and Reddit RSS (fallback) with no credentials; the official API stays a dormant placeholder; Reddit can be switched off with `REDDIT_PROVIDER=off`; the compliance decision is recorded in the README
+- [x] 🔄 A founder can target up to 3 locations (country + optional city); App Store quotes come only from those storefronts, local communities are suggested, strict mode hides non-local quotes, and `mentions_location` ranks place-specific quotes first
+- [x] MCP tools are callable from Claude using the user's own API key
+- [x] Claude can call `save_generated_content` and it appears in that user's dashboard
+- [x] Founder can edit, delete, and approve content in the dashboard
+- [x] Feedback reason is captured on edit/delete/approve and returned by `get_content_history`
+- [x] App is live on Vercel with a real HTTPS URL, a persistent (Turso) database, and a working cron
+- [x] No AI keys anywhere in the codebase; no secrets committed (`.env` ignored)

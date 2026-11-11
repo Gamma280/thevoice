@@ -170,7 +170,7 @@ Goal: complete UX in plain HTML/CSS/JS.
 - Dashboard: expanded cards stay open across refresh; auto-refresh when the tab regains focus (coming back from Claude); empty state distinguishes "still collecting" from "connect Claude".
 - Onboarding "Where is your audience?": ≤ 3 country + city rows, English-only warning for non-English countries, **Find app** search in the first location's storefront, **Suggest local communities** + manual add (tied to a location or global), clear errors for stale location ties and for changing the competitor name without re-picking an app; after save it runs the first collection with visible results.
 - `express.static({ extensions: ['html'] })` mirrors Vercel `cleanUrls` locally (`/dashboard` → `dashboard.html`).
-- **Connect page — Claude's "Add custom connector" screen only supports OAuth**, so the page uses the `mcp-remote` bridge with the key in `env` (`Authorization:${AUTH_HEADER}`, no spaces in args so it works on Windows). **Verified end to end** with the real `mcp-remote` package against a running server (tools listed, profile read; a wrong key is refused).
+- **Connect page (as first built; superseded by Phase 7 OAuth):** the page used the `mcp-remote` bridge with the key in `env` (`Authorization:${AUTH_HEADER}`, no spaces in args so it works on Windows). **Verified end to end** with the real `mcp-remote` package against a running server (tools listed, profile read; a wrong key is refused).
 - Bugs the frontend tests caught and fixed: a race where an instant submit on login/signup was ignored (handler attached after an async check) and `form.email` named access (use ids).
 - Testing: `jsdom` (dev dependency) runs the real `app.js` against the real Express app + DB with only Apple/Reddit faked — `test/frontend.test.js`, 19 tests.
 
@@ -251,27 +251,42 @@ Requested before deploy: ask for keywords/problems to find in the founder's user
 
 ---
 
-## Phase 6 — Deploy to Vercel
-Goal: live on the internet with persistent DB and a working collection schedule.
+## Phase 6 — Deploy to Vercel ✅ done (official Reddit API pending)
+Goal: live on the internet with persistent DB and a working collection schedule. **Live at https://thevoice-ruby.vercel.app** (Vercel + Turso `thevoice`).
 
-- [ ] Create Turso DB + token (`turso db create thevoice`; `turso db tokens create thevoice`)
-- [ ] `vercel.json` final: cleanUrls, rewrites (`/api/(.*)`, `/mcp`, `/health`), `crons` (`0 6 * * *` → `/api/cron/collect`), `functions["api/index.js"].maxDuration` (check current plan limit; Hobby = daily cron only)
-- [ ] `api/index.js`; confirm `@libsql/client` works in the Vercel runtime (fallback `@libsql/client/web`)
-- [ ] `git init`, push to GitHub; import repo in Vercel (or CLI)
-- [ ] Env vars: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `NODE_ENV=production`, **`CRON_SECRET`** (long random), optional `REDDIT_*`, `COLLECT_BUDGET_MS`; run `npm run db:init` against Turso (applies migrations)
-- [ ] **Reddit:** verify Arctic Shift + RSS actually respond from Vercel's IPs (RSS may 429/403 there); if both fail, Reddit shows an error on the Sources page and App Store data continues (or set `REDDIT_PROVIDER=off`). **Official API = optional later upgrade:** if approved, add `REDDIT_CLIENT_ID/SECRET/USER_AGENT` as Vercel env vars (never commit them) and re-run the live suggest + collect smoke; record the compliance decision in the README
-- [ ] Connect page shows the live origin (from request host / `BASE_URL`)
-- [ ] README: local setup, env vars, collection explained (sources, schedule, limits), compliance/takedown contact, deploy steps, Connect-to-Claude steps, out-of-scope list
-- [ ] Secret scan: `grep -rEi "sk-ant|ANTHROPIC|OPENAI" .` clean; `git ls-files | grep -E "\.env$|\.db$"` empty
+- [x] Create Turso DB + token
+- [x] `vercel.json`: cleanUrls, rewrites (`/api/*`, `/mcp`, `/health`, `/.well-known/*`, `/oauth/*`), `crons` (`0 6 * * *`), `maxDuration` 300
+- [x] `api/index.js`; `@libsql/client` works in the Vercel runtime
+- [x] `git init`, pushed to https://github.com/Gamma280/thevoice
+- [x] Env vars in Vercel: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `NODE_ENV`, `CRON_SECRET` (migrations run on first request)
+- [~] **Reddit:** from Vercel, Reddit RSS answers 403 (handled with a plain message and 6 h retry, no evasion); App Store works. **Decision: ship now; add the official Reddit API (`REDDIT_CLIENT_ID/SECRET/USER_AGENT`) when approved.** Recorded in the README.
+- [x] Connect page shows the live origin
+- [x] README written
+- [x] Secret scan clean (no AI keys; no `.env`/`.db` tracked)
+- [x] Vercel Deployment Protection turned off (otherwise `/mcp` is unreachable)
 
-**Acceptance (live)**
-- HTTPS signup/login works, cookie is `Secure`
-- Onboard with a real competitor → first collection completes on prod; Sources page `ok`
-- Vercel Cron fires (check function logs / `collection_runs`), `last_collected_at` advances, repeated runs add 0 duplicates; wrong/missing secret on the cron URL → 401
-- Data survives a redeploy; migrations applied once
-- Claude (real key) → profile → quotes (real, linked) → history → save; card appears in the live dashboard
-- Two live accounts can't see each other's content or followed sources
-- Rotating the key breaks the old one
+**Acceptance (live):**
+- [x] HTTPS signup/login works; cookie is `Secure; HttpOnly; SameSite=Lax`
+- [x] Cron route: no/wrong secret → 401; correct secret → collects due sources
+- [x] Two live accounts can't see each other's profile or content (404 / empty)
+- [x] Data survives a redeploy (test account still logs in afterwards)
+- [x] Claude connects as a custom connector (OAuth); `mcp:check` passes against the live endpoint
+- [x] Rotating the key breaks the old one (observed live)
+- [ ] Vercel Cron fires on its own and `last_collected_at` advances (check after the next 06:00 UTC run)
+- [ ] Reddit data from production (needs the official API)
+
+---
+
+## Phase 7 — OAuth connector ✅ done
+Goal: Claude's "Add custom connector" works with only the URL.
+- [x] Migration 6: `oauth_clients`, `oauth_codes`, `oauth_tokens`; helpers (atomic single-use code, refresh rotation)
+- [x] `oauth.js`: discovery metadata, dynamic client registration (redirect URI validation, rate limit), `/oauth/authorize` (login redirect, consent page, csrf, meta-refresh return), `/oauth/token` (PKCE S256, authorization_code + refresh_token)
+- [x] `requireApiKey` accepts `tvo_` tokens; the 401 carries `resource_metadata`
+- [x] Login/signup return to a pending approval (`?next=/oauth/authorize?…`)
+- [x] Connect page leads with the connector steps; key + bridge under "Advanced"
+- [x] `test/oauth.test.js` (7), including the real MCP SDK client with an OAuth token; **173/173 tests**
+- [x] Bug found live and fixed: browsers send `Origin: null` on the consent POST under `Referrer-Policy: no-referrer`
+- [ ] Not built: a "connected apps" list with per-app Disconnect on the Connect page; rotating the `tv_` key does not revoke OAuth tokens
 
 ---
 
@@ -285,4 +300,4 @@ Goal: live on the internet with persistent DB and a working collection schedule.
 - [ ] Usernames/handles/emails/URLs are never persisted from scraped content
 
 ## Deferred (documented non-goals for MVP)
-Email verification & password reset · Google/OAuth login · OAuth for MCP · Google Play / Hacker News / Product Hunt adapters · multi-country & multilingual collection · keyword/topic search per founder · AI-assisted scoring · dedicated worker/queue (needed beyond ~hundreds of sources or hourly SLAs) · billing · multi-founder teams · realtime dashboard updates.
+Email verification & password reset · Google/OAuth login · Google Play / Hacker News / Product Hunt adapters · multi-country & multilingual collection · keyword/topic search per founder · AI-assisted scoring · dedicated worker/queue (needed beyond ~hundreds of sources or hourly SLAs) · billing · multi-founder teams · realtime dashboard updates.
